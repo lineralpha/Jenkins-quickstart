@@ -1,8 +1,17 @@
-node {
+node('docker') {
+    checkout scm
     try {
+        stage('Build') {
+            docker.image('node:14-alpine').inside {
+                sh 'echo "Hello World!"'
+                sh 'npm --version'
+            }            
+        }
+
         stage('Test') {
             sh 'echo "Fail!"; exit 1'
         }
+        
         echo 'This will run only if successful'
     }
     catch (e) {

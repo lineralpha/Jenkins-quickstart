@@ -2,7 +2,7 @@ node {
     docker.image('node:14-alpine').inside {
         stage('Test') {
             sh 'node --version'
-            sh 'echo "Done!'
+            sh 'echo "Done!"'
         }
     }
 }

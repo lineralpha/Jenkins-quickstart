@@ -5,6 +5,7 @@ node('!windows') {
             echo "Database engine is ${DB_ENGINE}"
             echo "DISABLE_AUTH is ${DISABLE_AUTH}"
             sh 'printenv'
+            sh 'echo "Hello, I finished build"'
         }
     }
 }

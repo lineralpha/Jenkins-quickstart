@@ -1,0 +1,197 @@
+/*
+    Declarative syntax is a more recent feature of Jenkins Pipeline.
+*/
+pipeline {
+    agent none
+    environment {
+        CC = 'clang'
+        // dynamic env variable
+        EXIT_STATUS = """${sh(
+                returnStatus: true,
+                script: 'exit 1'
+        )}"""
+        // credentials - secret text
+        AWS_ACCESS_KEY_ID      = credentials('jenkins-aws-secret-key-id')
+        AWS_SECRECT_ACCESS_KEY = credentials('jenkens-aws-secret-access-key')
+
+        EXAMPLE_CREDS = credentials('example-credentials-id')
+
+        // credentials - secret file
+        MY_KUBECONFIG = credentials('my-kubeconfig')
+    }
+    options {
+        skipStageAfterUnstable()
+    }
+    stages {
+        stage('Build') {
+            // build stage can use any agent
+            agent any
+            // env variables within the scope of this stage
+            environment {
+                // username and password credentials
+                BITBUCKET_COMMON_CREDS = credentials('jenkins-bitbucket-common-creds')
+            }
+
+            steps {
+                sh 'echo "Build stage"'
+                echo "exit code: ${EXIT_STATUS}"
+
+                // avoid leaking secrets
+                sh 'curl -u $EXAMPLE_CREDS_USR:$EXAMPLE_CREDS_PSW http://example.com'
+               /* WRONG! */
+                sh "curl -u ${EXAMPLE_CREDS_USR}:${EXAMPLE_CREDS_PSW} https://example.com/"
+            }
+        }
+
+        stage('Test') {
+            agent {
+                label: linux
+            }
+            steps {
+                sh 'echo "Test stage"'
+                junit 'reports/**/*.xml'
+            }
+        }
+
+        stage('Deploy - staging') {
+
+        }
+
+        stage('Deploy - production') {
+
+        }
+    }
+
+    post {
+        always {
+            junit '**/target/*.xml'
+        }
+        failure {
+            mail to: team@example.com,
+                 subjects: 'The pipeline failed'
+        }
+    }
+}
+
+// node {
+//     try {
+//         stage('Build') {
+//             sh './gradlew build'
+//         }
+
+//         stage('Test') {
+//             sh './gradlew check'
+//         }
+
+//         // skipStageAfterUnstable()
+//         if (currentBuild.result == 'SUCCESS') {
+//             stage('Deploy - Staging') {
+//                 echo 'Deploy to staging'
+//                 sh './deploy staging'
+//                 sh './run-smoke'
+//             }
+
+//             stage('Sanity check') {
+//                 input "Does the staging environment look ok?"
+//             }
+
+//             stage('Deploy - Production') {
+//                 echo 'Deploy to production'
+//                 sh './deploy production'
+//             }
+//         }
+//     }
+//     finally {
+//         // record artifacts and test reports
+//         archiveArtifacts artifacts: 'build/libs/**/*.jar', fingerprint: true
+//         junit 'build/reports/**/*.xml'
+
+//         if (currentBuild.result == 'UNSTABLE') {
+//             echo 'I am unstable'
+//         }
+//         else {
+//             echo 'One way or another, I have finished'
+//         }
+//     }
+// }
+
+// node('!windows') {
+//     withEnv(['DISABLE_AUTH=true',
+//              'DB_ENGINE=sqlite']) {
+//         stage('Build') {
+//             echo "Database engine is ${DB_ENGINE}"
+//             echo "DISABLE_AUTH is ${DISABLE_AUTH}"
+//             sh 'printenv'
+//             sh 'echo "Hello, I finished build"'
+//         }
+//     }
+// }
+
+// pipeline {
+//     agent {
+//         label '!windows'
+//     }
+
+//     environment {
+//         DISABLE_AUTH = 'true'
+//         DB_ENGINE    = 'sqlite'
+//     }
+
+//     stages {
+//         stage('Build') {
+//             steps {
+//                 echo "Database engine is ${DB_ENGINE}"
+//                 echo "DISABLE_AUTH is ${DISABLE_AUTH}"
+//                 sh 'printenv'
+//             }
+//         }
+//     }
+// }
+
+// node {
+//     docker.image('node:14-alpine').inside {
+//         stage('Test') {
+//             sh 'node --version'
+//             sh 'echo "Done!"'
+//         }
+//     }
+// }
+
+// node {
+//     checkout scm
+//     try {
+//         stage('Build') {
+//             docker.image('node:14-alpine').inside {
+//                 sh 'echo "Hello World!"'
+//                 sh 'npm --version'
+//             }            
+//         }
+
+//         stage('Test') {
+//             sh 'echo "Fail!"; exit 1'
+//         }
+
+//         echo 'This will run only if successful'
+//     }
+//     catch (e) {
+//         echo 'This will run only if failed'
+
+//         // Since we're catching the exception in order to report on it,
+//         // we need to rethrow it, to ensure that the build is marked as failed.
+//         throw e
+//     }
+//     finally {
+//         def currentResult = currentBuild.result ?: 'SUCCESS'
+//         if (currentResult == 'UNSTABLE') {
+//             echo 'This will run only if the run was marked as unstable'
+//         }
+
+//         def prevResult = currentBuild.previousBuild?.result
+//         if (prevResult != null && prevResult != currentResult) {
+//             echo 'This will run only if the state of the pipeline has changed'
+//             echo 'For example, if the pipeline was previously failing but is now successful'
+//         }
+
+//         echo 'This will always run'
+//     }
+// }

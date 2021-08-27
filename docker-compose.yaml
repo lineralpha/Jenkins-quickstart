@@ -1,13 +1,34 @@
 version: '3.9'
 services:
-    jenkins-tutorial:
-        image: jenkins/jenkins:lts-jdk11
+    jenkins-docker:
+        image: docker:dind
+        privileged: true
+        environment:
+            - DOCKER_TLS_CERTDIR=/certs
+        networks:
+            - jenkins-network
+        volumes:
+            - jenkins-docker-certs:/certs/client
+            - jenkins-data:/var/jenkins_home
+    jenkins-blueocean:
+        build: .
+        image: myjenkins-blueocean:1.1
         ports:
             - 8080:8080
             - 50000:50000
+        networks:
+            - jenkins-network
+        environment:
+            - DOCKER_HOST=tcp://docker:2376
+            - DOCKER_CERT_PATH=/certs/client
+            - DOCKER_TLS_VERIFY=1
         volumes:
-            - jenkins_home:/var/jenkins_home
-            - /var/run/docker.sock:/var/run/docker.sock
-            - /usr/bin/docker:/usr/bin/docker
+            - jenkins-data:/var/jenkins_home
+            - jenkins-docker-certs:/certs/client:ro
+
+networks:
+    jenkins-network:
+
 volumes:
-    jenkins_home: {}
+    jenkins-data:
+    jenkins-docker-certs:
